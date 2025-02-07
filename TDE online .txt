@@ -1,0 +1,85 @@
+
+ TDE configuration in oracle 19c Database
+===========================================
+
+Step: 1-Configure the Wallet Root: 
+----------------------------------
+
+	select WRL_PARAMETER, WRL_TYPE,WALLET_TYPE, status from V$ENCRYPTION_WALLET;   ===>  #<path of dafult wallte>
+	
+WRL_TYPE             WALLET_TYPE          STATUS
+-------------------- -------------------- ------------------------------
+/u01/app/oracle/admin/FWRYUATDB/wallet
+FILE                 AUTOLOGIN            OPEN
+
+	mkdir -p /u01/app/oracle/admin/FWRYUATDB/wallet 
+
+	
+Step: 2-Configure the Wallet Root on the CDB:
+---------------------------------------------	
+ADMINISTER KEY MANAGEMENT CREATE KEYSTORE '/u01/app/oracle/admin/FWRYUATDB/wallet' identified by <password>;
+ADMINISTER KEY MANAGEMENT SET KEYSTORE OPEN IDENTIFIED BY <password>;
+ADMINISTER KEY MANAGEMENT SET KEY IDENTIFIED BY <password> with backup;
+
+
+Step: 3-Configure the Wallet Root on the PDB:
+---------------------------------------------
+ADMINISTER KEY MANAGEMENT SET KEYSTORE open IDENTIFIED BY  "<password>";
+ADMINISTER KEY MANAGEMENT SET KEY FORCE KEYSTORE IDENTIFIED BY "<password>" WITH BACKUP;
+
+
+Step: 2- CREATE AUTO LOGIN:
+---------------------------
+ADMINISTER KEY MANAGEMENT CREATE AUTO_LOGIN KEYSTORE FROM KEYSTORE '/u01/app/oracle/admin/FWRYUATDB/wallet' IDENTIFIED BY <password>;
+ADMINISTER KEY MANAGEMENT SET KEYSTORE CLOSE IDENTIFIED BY <password>;
+
+
+ls -ltr /u01/app/oracle/admin/FWRYUATDB/wallet
+
+-rw------- 1 oracle dba 2555 Nov 28 12:39 ewallet_2024112809392589.p12
+-rw------- 1 oracle dba 3995 Nov 28 12:39 ewallet.p12
+-rw------- 1 oracle dba 4040 Nov 28 12:39 cwallet.sso
+
+
+
+Step: 3- Online Encryption of Tablespace:
+-----------------------------------------
+
+alter session set container=GOAMLDB;
+alter system set encrypt_new_tablespaces = 'ALWAYS' scope=both sid='*';    ===> on CDB and PDB
+alter tablespace &TABLESPACE_NAME encryption online encrypt;               ===> with defalut algorithm 
+ 
+ OR
+
+ALTER TABLESPACE   <TABLESPACE_name>   ENCRYPTION ONLINE USING 'AES256' ENCRYPT;
+ALTER TABLESPACE   <TABLESPACE_name>   ENCRYPTION ONLINE USING 'AES256' ENCRYPT;
+ALTER TABLESPACE   <TABLESPACE_name>   ENCRYPTION ONLINE USING 'AES256' ENCRYPT;
+ALTER TABLESPACE   <TABLESPACE_name>   ENCRYPTION ONLINE USING 'AES256' ENCRYPT;
+
+
+
+
+Step: 4- Rebuild index:
+-----------------------
+
+
+#<stale index> 
+
+SQL> select * from all_ind_statistics 
+	 where stale_stats = 'YES' and owner in (select USERNAME from dba_uers where ORACLE_MAINTAINED !='Y');
+
+
+alter index   <index_name>   rebuild online parallel 30;
+alter index   <index_name>   rebuild online parallel 30;
+alter index   <index_name>   rebuild online parallel 30;
+alter index   <index_name>   rebuild online parallel 30;
+alter index   <index_name>   rebuild online parallel 30;
+
+
+
+
+Step: 4- TABLESPACE ENCRYPTED:
+------------------------------
+
+select TABLESPACE_NAME, ENCRYPTED from dba_tablespaces where ENCRYPTED='YES';
+
