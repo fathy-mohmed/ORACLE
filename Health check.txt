@@ -1,0 +1,407 @@
+https://dbaclass.com/monitor-your-db/
+
+
+https://labex.io/tutorials/linux-how-to-search-text-in-linux-logs-438013
+
+
+ls -1 | wc -l
+
+
+
+ls -1a | wc -l
+
+select logins from v$instance;
+
+Sql> show parameter STANDBY_FILE_MANAGEMENT;
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+standby_file_management              string      AUTO
+
+sql> ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=AUTO;
+OR 
+sql> ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=MANUAL;
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+/opt/oracle.ahf/bin/tfactl diagcollect -all -notrim -noclassify -from "JAN/09/2024 07:00:00" -to "JAN/09/2024 13:00:00"
+
+-----------------------------------------------------------------------------------------------------------------------------
+SELECT 'ALTER USER '|| name ||' IDENTIFIED BY VALUES '''|| spare4 ||';'|| password ||''';' FROM sys.user$ WHERE name='SYSTEM';
+
+SELECT name, PASSWORD 
+FROM sys.user$ 
+WHERE name = 'OMAR_MOHAMED';
+
+
+ALTER USER CTXCORE IDENTIFIED BY oasis77; 
+
+ALTER USER CTXCORE IDENTIFIED BY ctxcore;
+----------------------   DR   AND RUN COMMAND IN HQ alter system switch logfile ---------------------------------------------
+
+SELECT ARCH.THREAD# "Thread", ARCH.SEQUENCE# "Last Sequence Received", APPL.SEQUENCE# "Last Sequence Applied", (ARCH.SEQUENCE# - APPL.SEQUENCE#) "Difference" FROM (SELECT THREAD# ,SEQUENCE# FROM V$ARCHIVED_LOG WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)) ARCH,(SELECT THREAD# ,SEQUENCE# FROM V$LOG_HISTORY WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$LOG_HISTORY GROUP BY THREAD#)) APPL WHERE ARCH.THREAD# = APPL.THREAD# ORDER BY 1;
+
+
+
+
+select name||' '||value ||' '|| unit ||' computed at '||time_computed from v$dataguard_stats;
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+last BACKUP Rman:
+=================
+
+
+set linesize 900
+col STATUS format a40
+col hrs format 999.99
+
+select
+SESSION_KEY, INPUT_TYPE, STATUS,
+to_char(START_TIME,'mm/dd/yy hh24:mi') start_time,
+to_char(END_TIME,'mm/dd/yy hh24:mi')   end_time,
+elapsed_seconds/3600                   hrs
+from V$RMAN_BACKUP_JOB_DETAILS
+order by session_key;
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+set linesize
+=============
+
+col name format a20
+col VALUE format a20
+col TIME_COMPUTED format a20
+
+	select name, value, time_computed from v$dataguard_stats where name in ('transport lag', 'apply lag');  
+      
+	((ONLY DR))
+-----------------------------------------------------------------------------------------------------------------------------
+
+SELECT ROUND(SPACE_LIMIT / 1024 / 1024 / 1024, 2)              AS "Total Size (GB)", 
+       ROUND(SPACE_USED / 1024 / 1024 / 1024, 2)               AS "Used Size (GB)",
+       ROUND((SPACE_LIMIT-SPACE_USED) / 1024 / 1024 / 1024, 2) AS "Free Size (GB)",
+       ROUND((SPACE_USED / SPACE_LIMIT) * 100, 2)              AS "Used %",
+       ROUND(((SPACE_LIMIT-SPACE_USED)/ SPACE_LIMIT) * 100, 2) AS "Free % ",
+       ROUND(SPACE_RECLAIMABLE / 1024 / 1024 / 1024, 2)        AS "++ RECLAIMABLE Size (GB)"
+FROM V$RECOVERY_FILE_DEST;
+
+------------------------------------------------------------------------------------------------------------------------------
+dgmgrl 
+=======
+
+show configuration;
+show configuration verbose;
+show database <name standby DB>;
+show database verbose <name standby DB>;
+validate network configuration for all; 
+
+
+----------------------------------------------------------------------------------------------------------------------------
+Size with free space on Database
+=================================
+
+col "Database Size" format a20
+col "Free space" format a20
+col "Used space" format a20
+select round(sum(used.bytes) / 1024 / 1024 / 1024 ) || ' GB' "Database Size"
+, round(sum(used.bytes) / 1024 / 1024 / 1024 ) -
+round(free.p / 1024 / 1024 / 1024) || ' GB' "Used space"
+, round(free.p / 1024 / 1024 / 1024) || ' GB' "Free space"
+ from (select bytes
+from v$datafile
+  union all
+ select bytes
+ from v$tempfile
+ union all
+ select bytes
+ from v$log) used
+ , (select sum(bytes) as p
+ from dba_free_space) free
+ group by free.p
+ /
+ 
+ 
+------------------------------------------------------------------------------------------------------------------------------
+
+select INSTANCE_NAME, STATUS, DATABASE_STATUS FROM V$INSTANCE;
+
+SELECT database_role role, name,db_unique_name, open_mode, log_mode, flashback_on, protection_mode, protection_level FROM v$database;
+
+SELECT db_unique_name, open_mode FROM v$database;
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+
+show parameter recovery;
+show parameter local;
+select STATUS from v$instance;
+
+
+------------------------------------------------------------------------------------------------------------------------------
+ARCHIVELOG;
+============
+	
+	delete archivelog all;
+	delete archivelog until time 'sysdate -2';
+	delete noprompt force archivelog all; 
+	crosscheck archivelog all;
+	
+------------------------------------------------------------------------------------------------------------------------------
+count session
+===============
+
+SELECT count (*) , inst_id, status from gv$session group by inst_id , status order by inst_id;
+25
+
+--------------------------------------------------------------------------------------------------------------------------------
+Tunning Advisor  
+===============
+
+	@?/rdbms/admin/sqltrpt.sql
+	
+--------------------------------------------------------------------------------------------------------------------------------
+To find a list of all users with DBA privilege
+===============================================
+
+select * from dba_role_privs where granted_role='DBA';
+
+--------------------------------------------------------------------------------------------------------------------------------
+Gzip
+=====
+	gzip alert_FUBSCON1.log_bkp
+	du -sh alert_FUBSCON1.log_bkp
+	
+--------------------------------------------------------------------------------------------------------------------------------
+Time zone apply:
+===========	
+	
+@?/rdbms/admin/utltz_upg_check
+
+	
+@?/rdbms/admin/utltz_upg_apply	
+	
+	
+
+	
+set lines 1000
+set pages 1000
+show con_name;
+col SCHEMA_NAME for a12
+col TABLE_NAME          for a28
+col COLUMN_NAME for a27
+col DATA_TYPE for a34
+SELECT col.owner AS schema_name, col.table_name, column_id, column_name, data_type, data_scale AS second_scale
+FROM dba_tab_cols col 
+JOIN sys.dba_tables tab 
+  ON col.owner = tab.owner AND col.table_name = tab.table_name 
+WHERE col.data_type LIKE 'TIMESTAMP%TIME ZONE' 
+AND col.owner NOT IN (select USERNAME from dba_users where ORACLE_MAINTAINED='Y')
+ORDER BY col.owner, col.table_name, column_id;
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------
+Path trace file:
+=================
+
+select * 
+from v$diag_info 
+where NAME = 'Diag Trace';
+
+--------------------------------------------------------------------------------------------------------------------------------
+
+select DECODE(parameter, 'NLS_CHARACTERSET', 'CHARACTER SET',
+'NLS_LANGUAGE', 'LANGUAGE',
+'NLS_TERRITORY', 'TERRITORY') name,
+value from v$nls_parameters
+WHERE parameter IN ( 'NLS_CHARACTERSET', 'NLS_LANGUAGE', 'NLS_TERRITORY');
+
+--------------------------------------------------------------------------------------------------------------------------------
+alert LOG
+===========
+	
+	select name, value from v$diag_info;
+	select value from v$diag_info;
+
+	 ls -ltrh
+
+
+	tail -500f $BDUMP/alert_$ORACLE_SID.LOG 
+	
+--------------------------------------------------------------------------------------------------------------------------------
+RENAME COLUMN 
+================
+
+
+ALTER TABLE sourcedb.T_TRN_INTEREST_BEARING_ACCOUNTS
+RENAME COLUMN SOURCEDBER_NR TO  CUSTOMER_NR;
+
+--------------------------------------------------------------------------------------------------------------------------------
+Create user :
+==============
+
+CREATE USER rawan_magdy
+  IDENTIFIED BY test123
+  DEFAULT TABLESPACE USERS
+  TEMPORARY TABLESPACE TEMP
+  PROFILE DEFAULT
+  ACCOUNT UNLOCK;
+  -- 2 System Privileges for rawan_magdy 
+  GRANT CREATE SESSION TO rawan_magdy;
+GRANT SELECT ANY TABLE TO rawan_magdy;
+
+--------------------------------------------------------------------------------------------------------------------------------
+Table space size: 
+==================
+
+select t.tablespace,  t.totalspace as " Totalspace(MB)",
+round((t.totalspace-nvl(fs.freespace,0)),2) as "Used Space(MB)",
+nvl(fs.freespace,0) as "Freespace(MB)",
+round(((t.totalspace-nvl(fs.freespace,0))/t.totalspace)*100,2) as "%Used",
+round((nvl(fs.freespace,0)/t.totalspace)*100,2) as "% Free"
+from
+(select round(sum(d.bytes)/(1024*1024)) as totalspace,d.tablespace_name tablespace
+from dba_data_files d
+group by d.tablespace_name) t,
+(select round(sum(f.bytes)/(1024*1024)) as freespace,f.tablespace_name tablespace
+from dba_free_space f
+group by f.tablespace_name) fs
+where t.tablespace=fs.tablespace (+)
+order by "% Free";
+
+
+
+
+ALTER TABLESPACE <TABLESPACE_NAME> ADD DATAFILE SIZE 31G AUTOEXTEND ON NEXT 1G MAXSIZE 31G;
+
+
+select table_name from dba_tables where tablespace_name = 'USERS'
+
+--------------------------------------------------------------------------------------------------------------------------------
+DBA_Users;
+===========
+
+select username, account_status, expiry_date ,PASSWORD_CHANGE_DATE, LAST_LOGIN ,AUTHENTICATION_TYPE ,INHERITED,IMPLICIT,CREATED,LOCK_DATE from dba_users where username not in ('SYS', 'SYSTEM') and ACCOUNT_STATUS ='OPEN' ;
+
+
+select username, account_status, expiry_date  from dba_users where username not in ('SYS', 'SYSTEM'); 
+SELECT 'ALTER USER '|| name ||' IDENTIFIED BY VALUES '''|| spare4 ||';'|| password ||''';' FROM sys.user$ WHERE name='SYSTEM';
+
+
+select username, account_status from dba_users where account_status='EXPIRED';
+
+--------------------------------------------------------------------------------------------------------------------------------
+Block session:
+================
+
+
+set lines 480 pages 60
+COLUMN   ELAP     FORMAT  999999
+COLUMN   W_S     FORMAT  9999
+COLUMN   BLK     FORMAT  99999
+COLUMN   sid   FORMAT  9999
+COLUMN   serial# heading ser#   FORMAT   99999
+COLUMN   sql_text   FORMAT  a23  truncate
+COLUMN   plan_hv   FORMAT  9999999999
+COLUMN   event  FORMAT  a15 truncate
+COLUMN   username  heading userr FORMAT  a6 truncate
+COLUMN   program  FORMAT  a15 truncate
+COLUMN   machine  FORMAT  a15 truncate
+COL PROCESS FOR A7
+col inst heading i  for 9
+col spid for a6
+col wait_s  heading w for  9999
+col message for a95
+col sql_text for a15select p.spid,s.process,s.inst_id inst, s.sid,s.serial#,s.username,s.last_call_et elap,s.event,s.seconds_in_wait wait_s, s.blocking_session blk,s.blocking_instance blki,sq.sql_id,sq.plan_hash_value plan_hv, s.logon_time, s.machine, s.program, sq.sql_text
+--select p.spid,s.process,s.inst_id inst, s.sid,s.serial#,s.username,s.last_call_et elap,s.event,s.seconds_in_wait wait_s, s.blocking_session blk,s.blocking_instance blki,sq.sql_id,sq.plan_hash_value plan_hv, s.program, sq.sql_text
+from gv$session s, gv$sql sq, gv$process p
+where s.sql_id=sq.sql_id
+and s.inst_id=sq.inst_id
+and s.inst_id=p.inst_id
+and s.paddr=p.addr
+--and p.spid='1676'
+--and sq.sql_id='bctxxc95xz8pm'
+and s.status='ACTIVE'
+and s.sql_child_number=sq.child_number
+--and program like 'sqlplus%'
+--and logon_time>trunc(sysdate)+(23.5/24)
+and event not like 'Space Manage%'
+and event not like 'wait for unread messag%'
+--and s.username ='SYS'
+order by s.username,s.sql_id;
+
+
+--------------------------------------------------------------------------------------------------------------------------------
+History of SQL :
+==================
+
+SELECT
+  begin_interval_time,
+  sql_id,
+  plan_hash_value,
+  NVL(executions_delta,0) execs,
+  trunc((elapsed_time_delta  /DECODE(NVL(executions_delta,0),0,1,executions_delta))/1000000) avg_etime,
+  trunc((buffer_gets_delta  /DECODE(NVL(buffer_gets_delta,0),0,1,executions_delta))) avg_lio,
+  trunc((disk_reads_delta    /DECODE(NVL(buffer_gets_delta,0),0,1,executions_delta))) avg_pio,
+  trunc((ROWS_PROCESSED_DELTA/DECODE(NVL(executions_delta,0),0,1,executions_delta))) avg_rows
+FROM DBA_HIST_SQLSTAT S,
+  DBA_HIST_SNAPSHOT SS
+WHERE sql_id          = 'gz3jnr4ct7jhm' -- adapt here
+AND ss.snap_id        = S.snap_id
+AND ss.instance_number = S.instance_number
+AND executions_delta  > 0
+and begin_interval_time > to_date('01062015','ddmmyyyy') -- adapt here
+ORDER BY 1,2,3;
+
+--------------------------------------------------------------------------------------------------------------------------------
+Export with EXCLUD:
+===================
+
+	expdp directory=NEWDIR schemas=ABE dumpfile=abe_schema_%U.dmp logfile=abe_schema.log EXCLUDE=TABLE:\"in \(select table_name from dba_lobs where table_name\=\'BNK_APPLICATION_UPLOADS\'\)\"  parallel=8 cluster=n
+
+
+
+expdp 
+dumpfile=abe_schema_%U.dmp 
+logfile=abe_schema.log 
+directory=NEWDIR 
+schemas=ABE 
+EXCLUDE=TABLE:\"in \(select table_name from dba_lobs where table_name\=\'BNK_APPLICATION_UPLOADS\'\)\"  
+parallel=8 
+cluster=n
+
+--------------------------------------------------------------------------------------------------------------------------------
+CREATE PLUGGABLE:
+=================
+
+  CREATE PLUGGABLE DATABASE FAWRY
+  ADMIN USER pdbadmin IDENTIFIED BY Ora2022
+  ROLES = (dba);
+  
+    
+  alter pluggable database DMSPRD2 open instances=all; 
+  
+  
+  
+  /u01/app/oracle/product/19.3.0.0/dbhome_1/install/response
+  {ORACLE_BASE}/admin/{DB_UNIQUE_NAME}/scripts
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
