@@ -1,0 +1,212 @@
+
+SET LONG 1000000000
+DECLARE
+l_sql_tune_task_id VARCHAR2 (100);
+BEGIN
+l_sql_tune_task_id :=
+DBMS_SQLTUNE.create_tuning_task (
+sql_id => '211bnbmdk9qns',
+scope => DBMS_SQLTUNE.scope_comprehensive,
+time_limit => 500,
+task_name => '211bnbmdk9qns_tuning_malek',
+description => 'Tuning task for statement 211bnbmdk9qns');
+DBMS_OUTPUT.put_line ('l_sql_tune_task_id: ' || l_sql_tune_task_id);
+END;
+/
+
+EXEC DBMS_SQLTUNE.execute_tuning_task(task_name => '211bnbmdk9qns_tuning_malek');
+
+SET LONG 10000000;
+SET PAGESIZE 100000000
+SET LINESIZE 200
+SELECT DBMS_SQLTUNE.report_tuning_task ('211bnbmdk9qns_tuning_malek') AS recommendations FROM DUAL;
+
+
+
+
+
+
+
+
+
+========================================================================
+
+Recommendation (estimated benefit: 97.67%)
+------------------------------------------
+create index OASIS77.IDX$$_A4C30001 on OASIS77.ISTCARD("EXPIRYDATE");
+create index OASIS77.IDX$$_A4C30002 on OASIS77.SHCLOG("TXNTYPE","RESPCODE","MSGTYPE","LOCAL_DATE");
+
+
+
+GENERAL INFORMATION SECTION
+-------------------------------------------------------------------------------
+Tuning Task Name   : 211bnbmdk9qns_tuning_malek
+Tuning Task Owner  : SYS
+Workload Type      : Single SQL Statement
+Scope              : COMPREHENSIVE
+Time Limit(seconds): 500
+Completion Status  : COMPLETED
+Started at         : 01/12/2025 15:41:00
+Completed at       : 01/12/2025 15:47:32
+
+-------------------------------------------------------------------------------
+Schema Name   : OASIS77
+Container Name: OASIS77
+SQL ID        : 211bnbmdk9qns
+SQL Text      : select count(*) , sum(amount) , issuer
+                ,txntype,ISS_CURRENCY_CODE,ACQ_COUNTRY,mvv,msgtype from
+                shclog y where local_date between :"SYS_B_0" and :"SYS_B_1"
+                and issuer in (select issuer from istcard where 
+                EXPIRYDATE <=:"SYS_B_2") and respcode =:"SYS_B_3" and msgtype
+                in (:"SYS_B_4",:"SYS_B_5") and txntype in
+                (:"SYS_B_6",:"SYS_B_7") group by issuer,txntype
+                ,ISS_CURRENCY_CODE,ACQ_COUNTRY,mvv,msgtype  
+                ------transaction sum and count
+Bind Variables: :
+ 1 -  (VARCHAR2(32)):01-oct-2024
+ 2 -  (VARCHAR2(32)):31-dec-2024
+ 3 -  (VARCHAR2(32)):31-dec-2029
+ 4 -  (NUMBER):0
+ 5 -  (NUMBER):210
+ 6 -  (NUMBER):110
+ 7 -  (NUMBER):1
+ 8 -  (NUMBER):0
+
+-------------------------------------------------------------------------------
+FINDINGS SECTION (2 findings)
+-------------------------------------------------------------------------------
+
+1- SQL Profile Finding (see explain plans section below)
+--------------------------------------------------------
+  تم العثور على خطة تنفيذ أفضل لهذه الجملة.
+
+  Recommendation (estimated benefit: 85.44%)
+  ------------------------------------------
+  - يحسن الأخذ في الاعتبار قبول مرجع SQL الموصى به لاستخدام التنفيذ المتوازي
+    لهذه الجملة.
+    execute dbms_sqltune.accept_sql_profile(task_name =>
+            '211bnbmdk9qns_tuning_malek', task_owner => 'SYS', replace =>
+            TRUE, profile_type => DBMS_SQLTUNE.PX_PROFILE);
+
+  من شأن تنفيذ هذا الاستعلام بشكل متوازٍ مع DOP 16 أن يحسن من وقت الاستجابة
+  85.45% في الخطة الأصلية. إلا أن هذا سيزيد من استهلاك مورد الجملة بنحو
+  132.86% وهو ما قد يؤدي إلى تراجع مخرجات النظام. كذلك، ونظرًا لاستهلاك هذه
+  الموارد في فترة زمنية أقل، فقد يتأثر وقت الاستجابة للجمل المتزامنة بشكل سلبي.
+
+2- Index Finding (see explain plans section below)
+--------------------------------------------------
+  يمكن تحسين خطة تنفيذ هذه الجملة بواسطة تكوين فهرس واحد أو أكثر.
+
+  Recommendation (estimated benefit: 97.67%)
+  ------------------------------------------
+  - يحسن الأخذ في الاعتبار تشغيل مستشار الوصول لتحسين تصميم مخطط قاعدة
+    البيانات الحقيقي أو لتكوين الفهرس الموصى به.
+    create index OASIS77.IDX$$_A4C30001 on OASIS77.ISTCARD("EXPIRYDATE");
+
+  - يحسن الأخذ في الاعتبار تشغيل مستشار الوصول لتحسين تصميم مخطط قاعدة
+    البيانات الحقيقي أو لتكوين الفهرس الموصى به.
+    create index OASIS77.IDX$$_A4C30002 on
+    OASIS77.SHCLOG("TXNTYPE","RESPCODE","MSGTYPE","LOCAL_DATE");
+
+  Rationale
+  ---------
+    يحسِّن تكوين الفهارس الموصى بها خطة تنفيذ هذه الجملة بشكل كبير. ومع ذلك،
+    فإنه من الأفضل تشغيل "مستشار الوصول" باستخدام ممثل حمل عمل SQL في مقابل
+    جملة مفردة. يسمح هذا بالحصول على توصيات فهارس كاملة تأخذ في الاعتبار صيانة
+    الفهرس واستهلاك المساحات الإضافية.
+
+-------------------------------------------------------------------------------
+EXPLAIN PLANS SECTION
+-------------------------------------------------------------------------------
+
+1- Original
+-----------
+Plan hash value: 3396578698
+
+----------------------------------------------------------------------------------------------------
+| Id  | Operation                             | Name       | Rows  | Bytes | Cost (%CPU)| Time     |
+----------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                      |            |  6789 |   324K|  6232K  (1)| 00:04:04 |
+|   1 |  HASH GROUP BY                        |            |  6789 |   324K|  6232K  (1)| 00:04:04 |
+|*  2 |   FILTER                              |            |       |       |            |          |
+|*  3 |    TABLE ACCESS BY INDEX ROWID BATCHED| SHCLOG     | 14911 |   713K|  6232K  (1)| 00:04:04 |
+|*  4 |     INDEX SKIP SCAN                   | IDX$$_0108 |    10M|       |   138K  (1)| 00:00:06 |
+|*  5 |      FILTER                           |            |       |       |            |          |
+|*  6 |       TABLE ACCESS FULL               | ISTCARD    |     2 |    16 |     2   (0)| 00:00:01 |
+----------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter(TO_DATE(:SYS_B_1)>=TO_DATE(:SYS_B_0))
+   3 - filter(("TXNTYPE"=:SYS_B_6 OR "TXNTYPE"=:SYS_B_7) AND "LOCAL_DATE">=:SYS_B_0 AND 
+              "LOCAL_DATE"<=:SYS_B_1)
+   4 - access("RESPCODE"=:SYS_B_3)
+       filter("RESPCODE"=:SYS_B_3 AND ("MSGTYPE"=:SYS_B_4 OR "MSGTYPE"=:SYS_B_5) AND  
+              EXISTS (SELECT 0 FROM "ISTCARD" "ISTCARD" WHERE :B1=:B1 AND "EXPIRYDATE"<=:SYS_B_2))
+   5 - filter(:B1=:B1)
+   6 - filter("EXPIRYDATE"<=:SYS_B_2)
+
+2- Using New Indices
+--------------------
+Plan hash value: 2113136046
+
+----------------------------------------------------------------------------------------------------------
+| Id  | Operation                               | Name           | Rows  | Bytes | Cost (%CPU)| Time     |
+----------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                        |                |  6789 |   324K|   144K  (1)| 00:00:06 |
+|   1 |  HASH GROUP BY                          |                |  6789 |   324K|   144K  (1)| 00:00:06 |
+|*  2 |   FILTER                                |                |       |       |            |          |
+|*  3 |    FILTER                               |                |       |       |            |          |
+|   4 |     INLIST ITERATOR                     |                |       |       |            |          |
+|   5 |      TABLE ACCESS BY INDEX ROWID BATCHED| SHCLOG         |   298K|    13M|   144K  (1)| 00:00:06 |
+|*  6 |       INDEX RANGE SCAN                  | IDX$$_A4C30002 |   536K|       |  2631   (1)| 00:00:01 |
+|*  7 |    FILTER                               |                |       |       |            |          |
+|*  8 |     INDEX RANGE SCAN                    | IDX$$_A4C30001 |     2 |    16 |     3   (0)| 00:00:01 |
+----------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter( EXISTS (SELECT 0 FROM "ISTCARD" "ISTCARD" WHERE :B1=:B1 AND 
+              "EXPIRYDATE"<=:SYS_B_2))
+   3 - filter(TO_DATE(:SYS_B_1)>=TO_DATE(:SYS_B_0))
+   6 - access(("TXNTYPE"=:SYS_B_6 OR "TXNTYPE"=:SYS_B_7) AND "RESPCODE"=:SYS_B_3 AND 
+              ("MSGTYPE"=:SYS_B_4 OR "MSGTYPE"=:SYS_B_5) AND "LOCAL_DATE">=:SYS_B_0 AND "LOCAL_DATE"<=:SYS_B_1)
+   7 - filter(:B1=:B1)
+   8 - access("EXPIRYDATE"<=:SYS_B_2)
+
+3- Using Parallel Execution
+---------------------------
+Plan hash value: 505645218
+
+--------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                  | Name     | Rows  | Bytes | Cost (%CPU)| Time     |    TQ  |IN-OUT| PQ Distrib |
+--------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT           |          |  6789 |   324K|   907K  (1)| 00:00:36 |        |      |            |
+|*  1 |  PX COORDINATOR            |          |       |       |            |          |        |      |            |
+|   2 |   PX SEND QC (RANDOM)      | :TQ10001 |  6789 |   324K|   907K  (1)| 00:00:36 |  Q1,01 | P->S | QC (RAND)  |
+|   3 |    HASH GROUP BY           |          |  6789 |   324K|   907K  (1)| 00:00:36 |  Q1,01 | PCWP |            |
+|   4 |     PX RECEIVE             |          |  6789 |   324K|   907K  (1)| 00:00:36 |  Q1,01 | PCWP |            |
+|   5 |      PX SEND HASH          | :TQ10000 |  6789 |   324K|   907K  (1)| 00:00:36 |  Q1,00 | P->P | HASH       |
+|   6 |       HASH GROUP BY        |          |  6789 |   324K|   907K  (1)| 00:00:36 |  Q1,00 | PCWP |            |
+|*  7 |        FILTER              |          |       |       |            |          |  Q1,00 | PCWC |            |
+|*  8 |         FILTER             |          |       |       |            |          |  Q1,00 | PCWC |            |
+|   9 |          PX BLOCK ITERATOR |          |   298K|    13M|   907K  (1)| 00:00:36 |  Q1,00 | PCWC |            |
+|* 10 |           TABLE ACCESS FULL| SHCLOG   |   298K|    13M|   907K  (1)| 00:00:36 |  Q1,00 | PCWP |            |
+|* 11 |         FILTER             |          |       |       |            |          |        |      |            |
+|* 12 |          TABLE ACCESS FULL | ISTCARD  |     2 |    16 |     2   (0)| 00:00:01 |        |      |            |
+--------------------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   1 - filter(TO_DATE(:SYS_B_1)>=TO_DATE(:SYS_B_0))
+   7 - filter( EXISTS (SELECT 0 FROM "ISTCARD" "ISTCARD" WHERE :B1=:B1 AND "EXPIRYDATE"<=:SYS_B_2))
+   8 - filter(TO_DATE(:SYS_B_1)>=TO_DATE(:SYS_B_0))
+  10 - filter(("TXNTYPE"=:SYS_B_6 OR "TXNTYPE"=:SYS_B_7) AND "RESPCODE"=:SYS_B_3 AND "LOCAL_DATE">=:SYS_B_0 
+              AND "LOCAL_DATE"<=:SYS_B_1 AND ("MSGTYPE"=:SYS_B_4 OR "MSGTYPE"=:SYS_B_5))
+  11 - filter(:B1=:B1)
+  12 - filter("EXPIRYDATE"<=:SYS_B_2)
+
+-------------------------------------------------------------------------------
