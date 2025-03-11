@@ -1,0 +1,350 @@
+
+
+$   #  !  @ ( )
+
+
+
+-----alter session set container=test;
+
+
+-----select * from hr.employees;
+
+
+------------------------------------enable databas vaut multitenant--------------------------
+
+
+select comp_name , version, status from dba_registry;
+
+
+select * from dba_objects where status='invalid';
+
+
+
+SELECT owner,
+       object_name,
+       object_type,
+       status,
+       created,
+       last_ddl_time
+FROM   dba_objects
+WHERE  status = 'INVALID';
+
+
+@?/rdbms/admin/utlrp.sql
+
+
+
+===============================================================================================
+
+
+
+1---sqlplus / as sysdba
+
+
+2---select * from v$option where parameter ='Oracle Database Vault' ;
+
+
+3---select * from dba_dv_status;
+
+
+4---show con_name
+
+
+5---show pdbs
+
+
+6---create user c##dvowner identified by dvowner container=all;
+
+
+7---create user c##dvactmgr identified by dvactmgr container=all;
+
+
+8---grant create session to c##dvowner , c##dvactmgr , ;
+
+
+9---BEGIN
+  2  DVSYS.CONFIGURE_DV(dvowner_uname =>'c##dvowner',
+  3  dvacctmgr_uname =>'c##dvactmgr');
+  4  END;
+  5  /
+
+PL/SQL procedure successfully completed.
+
+
+
+10---conn c##dvowner/dvowner
+
+
+
+11---exec DVSYS.DBMS_MACADM.ENABLE_DV
+
+
+12---conn / as sysdba
+
+
+13---shutdown immediate
+
+
+14---startup
+
+
+15---show pdbs
+
+
+16---alter pluggable database all open;
+
+
+17---show pdbs
+
+
+18---select * from v$option where parameter ='Oracle Database Vault' ;
+
+
+19---select * from dba_dv_status;
+
+
+20---conn c##dvowner/dvowner
+
+
+21---exec dvsys.dbms_macadm.enable_app_protection(NULL);
+
+
+22---conn / as sysdba
+
+
+-----shutdown immediate
+
+-----startup
+
+-----conn / as sysdba
+
+
+
+23---select * from v$option where parameter ='Oracle Database Vault' ;
+
+PARAMETER
+----------------------------------------------------------------
+VALUE                                                                CON_ID
+---------------------------------------------------------------- ----------
+Oracle Database Vault
+TRUE                                                                      0
+
+
+
+24---select * from dba_dv_status;
+
+NAME
+-------------------
+STATUS
+----------------------------------------------------------------
+DV_APP_PROTECTION
+ENABLED
+
+DV_CONFIGURE_STATUS
+TRUE
+
+DV_ENABLE_STATUS
+TRUE
+
+
+
+
+25---alter session set container=test;
+
+
+
+
+26---select * from v$option where parameter ='Oracle Database Vault' ;
+
+PARAMETER
+----------------------------------------------------------------
+VALUE                                                                CON_ID
+---------------------------------------------------------------- ----------
+Oracle Database Vault
+FALSE                                                                     0
+
+
+
+
+27---select * from dba_dv_status;
+
+NAME
+-------------------
+STATUS
+----------------------------------------------------------------
+DV_APP_PROTECTION
+ENABLED
+
+DV_CONFIGURE_STATUS
+FALSE
+
+DV_ENABLE_STATUS
+FALSE
+
+
+28---select * from hr.employees;
+
+
+
+================================================================================================
+================================================================================================
+================================================================================================
+
+
+
+
+1---conn / as sysdba
+
+2---select * from dba_dv_status;
+
+3---alter session set container=test;
+
+4---select * from dba_dv_status;
+
+5---select count (*) from hr.employees;
+
+6---conn  c##dvactmgr/dvactmgr
+
+7---create user c##common identified by common container=all;
+
+8---conn / as sysdba
+
+9---grant create session , select any table to c##common container=all;
+
+10--conn c##common/common@test
+
+11--select count (*) from hr.employees;
+
+12--conn c##dvowner/dvowner
+
+13--exec dvsys.dbms_macadm.enable_app_protection(NULL);
+
+14--conn / as sysdba
+
+15--select * from dba_dv_status;
+
+16--conn sys@test as sysdba
+
+17--select * from dba_dv_status;
+
+18--conn c##common/common@test
+
+19--select count (*) from hr.employees;
+
+20--conn sys@test as sysdba
+
+21--grant sysdba to c##common;
+
+22--exit
+
+23--rman target c##common/common@test
+
+24--RMAN>backup database;
+
+25--RMAN>delete backupset completed before "sysdate";
+
+26--yes
+
+27--exit
+
+28--conn c##dvowner/dvowner
+
+29--exec dvsys.dbms_macadm.disable_app_protection
+
+30--conn / as sysdba
+
+31--select * from dba_dv_status;
+
+32--conn sys@test as sysdba  
+
+33--select * from dba_dv_status;
+
+34--conn c##common/common@test
+
+35--select count (*) from hr.employees;
+
+36--conn c##dvowner/dvowner
+
+37--exec dvsys.dbms_macadm.enable_app_protection
+
+38--conn / as sysdba
+
+39--select * from dba_dv_status;
+
+40--conn c##dvactmgr/dvactmgr
+
+41--create user c##report identified by rebort container=all;
+
+42--conn / as sysdba
+
+43--grant create session,select any table to c##report container=all;
+
+44--conn c##report/report
+
+45--select count (*) from hr.employees;
+
+46--conn c##dvowner/dvowner
+
+47--exec dvsys.dbms_macadm.add_app_exception(owner => 'c##report' , package_name => '')
+
+48--select * from dvsys.dba_dv_app_exeception;
+
+49--conn c##report/report@test
+
+50--select count (*) from hr.employees;
+
+51--conn c##common/common@test
+
+52--select count (*) from hr.employees;
+
+53--exit
+
+54--sqlplus /conn c##dvowner/dvowner
+
+55--exec dvsys.dbms_macadm.disable_app_protection
+
+56--exec dvsys.dbms_macadm.disable_dv
+
+57--conn c##dvowner/dvowner@test
+
+58--exec dvsys.dbms_macadm.disable_dv
+
+59--conn / as sysdba
+
+60--shutdown immediate
+
+61--startup
+
+62--alter pluggable database all open;
+
+
+================================================================================================
+================================================================================================
+===================================REALMS=======================================================
+
+
+
+1---
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

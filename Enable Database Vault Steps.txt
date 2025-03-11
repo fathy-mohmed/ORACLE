@@ -1,0 +1,129 @@
+Enable Database Vault Steps 
+============================
+
+---Recommended but Not Required 
+select comp_name , version, status from dba_registry;
+select count(*) from dba_objects where status='INVALID';
+@?/rdbms/admin/utlrp.sql
+
+- Check Current Status for db Vault
+=====================================
+sqlplus / as sysdba
+select * from v$option where parameter ='Oracle Database Vault' ;
+select * from dba_dv_status;
+
+
+- Create Vault Owner, Manager with required privs 
+====================================================
+show con_name
+show pdbs
+create user c##dvowner identified by dvowner container=all;
+create user c##dvactmgr identified by dvactmgr container=all;
+grant create session to c##dvowner , c##dvactmgr ;
+
+BEGIN
+  DVSYS.CONFIGURE_DV(dvowner_uname =>'c##dvowner',
+  dvacctmgr_uname =>'c##dvactmgr');
+  END;
+  /
+
+grant select any table to c##dvowner
+grant select on sys.all_users to c##dvowner;
+grant select any dictionary to c##dvowner;
+
+
+
+- Connect With vault owner and enable vault 
+===============================================
+conn c##dvowner/dvowner
+exec DVSYS.DBMS_MACADM.ENABLE_DV
+
+
+
+- Restart DB , Recheck Vault status 
+=====================================
+conn / as sysdba
+shutdown immediate
+startup
+show pdbs
+alter pluggable database all open;
+
+show pdbs
+select * from v$option where parameter ='Oracle Database Vault' ;
+select * from dba_dv_status;
+
+
+
+- Enable App Protection 
+=============================
+conn c##dvowner/dvowner
+exec dvsys.dbms_macadm.enable_app_protection(NULL);
+conn / as sysdba
+
+
+- Recheck again vault componetnts status 
+select * from v$option where parameter ='Oracle Database Vault' ;
+select * from dba_dv_status;
+
+alter session set container=ORACL2K;
+select * from v$option where parameter ='Oracle Database Vault' ;
+select * from dba_dv_status;
+
+
+- Create Realms  
+====================
+conn c##dvowner/dvowner
+BEGIN
+DVSYS.DBMS_MACADM.CREATE_REALM(
+ realm_name =>'ARABANK_REALM',
+ description =>'Realm to protect tables ARABANK schema' ,
+ enabled =>DBMS_MACUTL.G_YES, --realm enabled
+ audit_options =>DBMS_MACUTL.G_REALM_AUDIT_FAIL); --audit enabled
+END;
+/
+
+
+Add Objects to Realm 
+=========================
+pa_tran_monthly_dtl  ---- TOT_VAL , NET_VAL
+monthly_dtl          ------- VAL
+pa_monthly_dtl       ------  NET_VAL
+
+
+BEGIN
+DVSYS.DBMS_MACADM.ADD_OBJECT_TO_REALM(
+realm_name =>'ARABANK_REALM',
+object_owner =>'ARABANK',
+object_name =>'pa_tran_monthly_dtl',
+object_type =>'TABLE');
+commit;
+END;
+/
+
+BEGIN
+DVSYS.DBMS_MACADM.ADD_OBJECT_TO_REALM(
+realm_name =>'ARABANK_REALM',
+object_owner => 'ARABANK',
+object_name => 'monthly_dtl',
+object_type =>'TABLE');
+END;
+/
+
+BEGIN
+DVSYS.DBMS_MACADM.ADD_OBJECT_TO_REALM(
+realm_name =>'ARABANK_REALM',
+object_owner => 'ARABANK',
+object_name => 'pa_monthly_dtl',
+object_type =>'TABLE');
+END;
+/
+
+BEGIN
+DVSYS.DBMS_MACADM.ADD_AUTH_TO_REALM(
+ realm_name =>'ARABANK_REALM',
+ grantee =>'ARABANK',
+ auth_options =>DBMS_MACUTL.G_REALM_AUTH_OWNER);
+end;
+/
+
+

@@ -1,0 +1,68 @@
+
+
+- Shutdown the current database 
+SQL> shut abort 
+SQL> create spfile from pfile='/u01/app/oracle/product/19.0.0/db_2/dbs/inithr.ora';
+
+- Remove its datafiles 
+rm -rf /u01/app/oracle/oradata/HR/
+
+- Check listener Service 
+lsnrctl status 
+
+
+- Start the rman duplicate , monitor 
+cd ~
+nohup rman cmdfile=dup.cmd & 
+tail -f nohup.out 
+
+
+
+
+
+
+Manual Failover Target DB 
+===========================
+
+SQL> alter database recover managed standby database finish;
+alter database recover managed standby database finish
+*
+ERROR at line 1:
+ORA-00283: recovery session canceled due to errors
+ORA-16171: RECOVER...FINISH not allowed due to gap for thr 1, seq 0-0
+
+-- If you faced the above error , then you need more recover from prod , so we need to scp last archives from prod , recover the target db.
+
+- from prod :- 
+scp -rp /u01/app/oracle/fast_recovery_area/2025_02_26   10.43.127.20:/u01/app/oracle/
+
+- on target db 
+rman target / 
+catalog start with '/u01/app/oracle/2025_02_26';
+recover database; 
+
+
+- rerun failover steps again on target db.
+alter database recover managed standby database cancel;
+alter database recover managed standby database finish;
+alter database activate standby database;
+shutdown immediate;
+Startup;
+
+
+SQL> select database_role from gv$database;
+DATABASE_ROLE
+----------------
+PRIMARY
+
+
+
+SQL> show pdbs;
+
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         4 ORACL2K                        READ WRITE NO
+
+
+

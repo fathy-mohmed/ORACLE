@@ -1,0 +1,179 @@
+
+- create this dir for audit file dest 
+mkdir -p /u01/app/oracle/admin/hr/adump
+
+
+vi $ORACLE_HOME/dbs/inithr.ora
+=====================
+*.audit_file_dest='/u01/app/oracle/admin/hr/adump'
+*.audit_sys_operations=TRUE
+*.audit_trail='db'
+*.compatible='19.0.0'
+*.db_block_size=8192
+*.db_create_file_dest='/u01/app/oracle/oradata'
+*.db_create_online_log_dest_1='/u01/app/oracle/oradata'
+*.db_name='hr'#Modified by RMAN duplicate
+*.db_unique_name='hr'#Modified by RMAN duplicate
+*.diagnostic_dest='/u01/app/oracle'
+*.dispatchers='(PROTOCOL=TCP) (SERVICE=hruatXDB)'
+*.enable_pluggable_database=true
+*.local_listener='(DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=hq-hrprdbut-v01)(PORT=1539)))'
+*.nls_language='AMERICAN'
+*.nls_territory='AMERICA'
+*.open_cursors=300
+*.os_roles=FALSE
+*.pga_aggregate_target=1698m
+*.processes=640
+*.remote_login_passwordfile='EXCLUSIVE'
+*.sec_case_sensitive_logon=TRUE
+*.sga_target=5091m
+*.sql92_security=TRUE
+*.undo_tablespace='UNDOTBS1'
+=====================
+export ORACLE_SID=hr
+
+sqlplus / as sysdba 
+SQL> create spfile from pfile; 
+SQL> startup nomount;
+SQL> show parameter name ;
+SQL> show parameter create ;
+SQL> show parameter spf ;
+
+--- set below parameters if not set ---------------  
+alter system set db_create_file_dest="/u01/app/oracle/oradata/HRUAT"  scope=spfile;
+alter system set db_create_online_log_dest_1="/u01/app/oracle/oradata/HRUAT"  scope=spfile;
+
+
+- Copy Password File from prod 
+=================================
+- if single db on file systems 
+cd $ORACLE_HOME/dbs/
+scp orapwhr -rp 10.43.127.20:$ORACLE_HOME/dbs/orapwhr
+
+- If RAC 
+srvctl config database -d hr 
+
+
+
+Add Static Listener Service for target db 
+==============================================
+vi $ORACLE_HOME/network/admin/listener.ora 
+
+SID_LIST_LISTENER =
+  (SID_LIST =
+    (SID_DESC =
+      (ORACLE_HOME = /u01/app/oracle/product/19.0.0/db_2)
+      (SID_NAME = HRUAT)
+    )
+  )
+  
+ 
+
+
+
+
+
+Prepare Duplicate Script for target db 
+==============================================
+
+connect target sys/"Ora2022_2022"@HRPROD
+connect  auxiliary sys/"Ora2022_2022"@HRUAT
+run {
+allocate channel prmy1 type disk;
+allocate channel prmy2 type disk;
+allocate channel prmy3 type disk;
+allocate channel prmy4 type disk;
+allocate channel prmy5 type disk;
+allocate channel prmy6 type disk;
+allocate channel prmy7 type disk;
+allocate channel prmy8 type disk;
+allocate channel prmy9 type disk;
+allocate channel prmy10 type disk;
+allocate channel prmy11 type disk;
+allocate channel prmy12 type disk;
+allocate auxiliary channel stby1 type disk;
+allocate auxiliary channel stby2 type disk;
+allocate auxiliary channel stby3 type disk;
+allocate auxiliary channel stby4 type disk;
+allocate auxiliary channel stby5 type disk;
+allocate auxiliary channel stby6 type disk;
+allocate auxiliary channel stby7 type disk;
+allocate auxiliary channel stby8 type disk;
+allocate auxiliary channel stby9 type disk;
+allocate auxiliary channel stby10 type disk;
+allocate auxiliary channel stby11 type disk;
+allocate auxiliary channel stby12 type disk;
+
+duplicate target database 
+for standby 
+from active database
+   nofilenamecheck;
+  }  
+  
+nohup rman @dup.cmd &
+
+
+
+
+
+Check target db after duplicate
+================================
+
+
+SQL> select open_mode from gv$database;
+
+OPEN_MODE
+--------------------
+MOUNTED
+
+SQL>
+SQL>
+SQL> select database_role from gv$database;
+
+DATABASE_ROLE
+----------------
+PHYSICAL STANDBY
+
+
+Manual Failover Target DB 
+===========================
+
+SQL> alter database recover managed standby database finish;
+alter database recover managed standby database finish
+*
+ERROR at line 1:
+ORA-00283: recovery session canceled due to errors
+ORA-16171: RECOVER...FINISH not allowed due to gap for thr 1, seq 0-0
+
+-- If you faced the above error , then you need more recover from prod , so we need to scp last archives from prod , recover the target db.
+
+- from prod :- 
+scp -rp /u01/app/oracle/fast_recovery_area/2025_02_26   10.43.127.20:/u01/app/oracle/
+
+- on target db 
+rman target / 
+catalog start with '/u01/app/oracle/2025_02_26';
+recover database; 
+
+
+- rerun failover steps again on target db.
+alter database recover managed standby database cancel;
+alter database recover managed standby database finish;
+alter database activate standby database;
+shutdown immediate;
+Startup;
+
+
+SQL> select database_role from gv$database;
+DATABASE_ROLE
+----------------
+PRIMARY
+
+
+
+SQL> show pdbs;
+
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         4 ORACL2K                        READ WRITE NO
