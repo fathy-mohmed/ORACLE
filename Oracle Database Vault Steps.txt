@@ -1,0 +1,237 @@
+Vault Steps 
+==========================
+
+
+Step 1: Verify Prerequisites
+====================================
+- Ensure that Oracle Database 19c is already installed.
+- Verify that your database is in ARCHIVELOG mode:
+
+SQL> SELECT log_mode FROM v$database;
+
+
+- If it returns NOARCHIVELOG, switch to ARCHIVELOG mode:
+SQL> SHUTDOWN IMMEDIATE;
+SQL> STARTUP MOUNT;
+SQL> ALTER DATABASE ARCHIVELOG;
+SQL> ALTER DATABASE OPEN;
+
+
+- Check if Oracle Label Security (OLS) is enabled, as Database Vault requires it, If it is not installed, you must enable it.
+
+SQL> SELECT * FROM dba_registry WHERE comp_id='OLS';
+
+
+
+Step 2: Install Database Vault
+======================================
+
+
+- Connect to the database as SYSDBA and execute:
+cd $ORACLE_HOME/rdbms/admin
+SQL> sqlplus / as sysdba
+SQL> @dvca.sql
+
+
+OR 
+- Manually Enable Database Vault (Alternative Method) If you prefer manual installation, execute:
+SQL> ALTER SYSTEM SET "_dv_enabled"=true SCOPE=SPFILE;
+SQL> SHUTDOWN IMMEDIATE;
+SQL> STARTUP;
+SQL> @?/rdbms/admin/dv_install.sql
+
+
+OR 
+- Use procedure to enable Oracle Database Vault (DBVault) inside a PDB or non-CDB database.
+SQL> EXEC DBMS_MACADM.ENABLE_DV (strict_mode => 'n');  -- Regular Mode
+SQL> EXEC DBMS_MACADM.ENABLE_DV (strict_mode => 'y');  -- Strict Mode
+
+- What’s the Difference Between 'y' and 'n'?
+  strict_mode => 'n' (Regular Mode) (Default behavior).
+	>> Enables Database Vault without enforcing strict security rules immediately.
+	>> Allows SYS to access some operations unless explicitly restricted.
+
+  strict_mode => 'y' (Strict Mode)
+	>> Enforces full separation of duties.
+	>> SYS loses many administrative privileges (stronger security).
+	>> Blocks SYSDBA users from modifying critical security configurations.
+	>> Best for high-security environments.
+
+
+
+Step 3: Configure Database Vault
+=====================================
+- Create an Account for Database Vault Administration, Log in as SYS and create a new Database Vault Owner:
+sqlplus / as sysdba 
+SQL> CREATE USER dvadmin IDENTIFIED BY dvpassword;
+SQL> GRANT DV_OWNER TO dvadmin;
+
+
+- Optionally, create a Database Vault Manager:
+SQL> CREATE USER dvmanager IDENTIFIED BY dvpassword;
+SQL> GRANT DV_ADMIN TO dvmanager;
+
+
+
+
+Step 4: Define Realms, Command Rules, and Factors
+======================================================
+- Use Database Vault Administrator to create realms and enforce security policies.
+
+
+Steps to Prevent Access Example :-
+ 
+1. Create a Database Vault Realm
+Create a realm specifically to protect these 3 tables.
+
+
+BEGIN
+   DBMS_MACADM.CREATE_REALM(
+      realm_name       => 'Protect_Arabank_Tables',
+      description      => 'Protect table1, table2, and table3 in the arabank schema',
+      enabled          => DBMS_MACUTL.G_YES
+   );
+END;
+/
+
+
+2. Add the Specific Tables to the Realm
+Add only the 3 tables to the realm
+
+BEGIN
+   -- Add table1
+   DBMS_MACADM.ADD_OBJECT_TO_REALM(
+      realm_name       => 'Protect_Arabank_Tables',
+      object_schema    => 'ARABANK',
+      object_name      => 'TABLE1',
+      object_type      => 'TABLE'
+   );
+
+   -- Add table2
+   DBMS_MACADM.ADD_OBJECT_TO_REALM(
+      realm_name       => 'Protect_Arabank_Tables',
+      object_schema    => 'ARABANK',
+      object_name      => 'TABLE2',
+      object_type      => 'TABLE'
+   );
+
+   -- Add table3
+   DBMS_MACADM.ADD_OBJECT_TO_REALM(
+      realm_name       => 'Protect_Arabank_Tables',
+      object_schema    => 'ARABANK',
+      object_name      => 'TABLE3',
+      object_type      => 'TABLE'
+   );
+END;
+/
+
+
+3. Use Database Roles for Fine-Grained Privileges
+Create a role for users who need access
+CREATE ROLE arabank_read_role;
+GRANT SELECT ON arabank.<table_name> TO arabank_read_role;
+
+
+2.Assign this role only to specific users:
+GRANT arabank_read_role TO user_allowed_access;
+
+
+4.audit 
+AUDIT SELECT, INSERT, UPDATE, DELETE ON arabank.<table_name> BY ACCESS;
+
+
+
+
+Optionally Restrict SYS from Performing Administrative Actions
+=======================================================================
+
+A) Create a Database Vault Realm for SYS
+- Switch to secure_admin (Database Vault Owner) and create a realm to restrict SYS from modifying system objects:
+
+BEGIN
+  DVSYS.DBMS_MACADM.CREATE_REALM(
+    realm_name    => 'Restrict SYS Realm',
+    realm_desc    => 'Prevents SYS from accessing sensitive data',
+    enabled       => DBMS_MACUTL.G_YES
+  );
+END;
+/
+
+
+
+
+B) Add SYS-Related Objects to the Realm
+- Protect important schemas (like SYS, SYSTEM):
+- This prevents SYS from modifying any table in the SYS schema.
+
+BEGIN
+  DVSYS.DBMS_MACADM.ADD_REALM_OBJECT(
+    realm_name   => 'Restrict SYS Realm',
+    object_owner => 'SYS',
+    object_name  => '%',
+    object_type  => 'TABLE'
+  );
+END;
+/
+
+
+
+Prevent SYS from Running Critical Commands
+==================================================
+- Create a Command Rule to block SYS from executing certain commands:
+
+A) Block SYS from Creating Users Example
+
+BEGIN
+  DVSYS.DBMS_MACADM.CREATE_COMMAND_RULE(
+    command        => 'CREATE USER',
+    rule_name      => 'Block SYS Create User',
+    object_owner   => NULL,
+    object_name    => NULL,
+    rule_expr      => 'SYS_CONTEXT(''USERENV'', ''SESSION_USER'') != ''SYS''',
+    enabled        => DBMS_MACUTL.G_YES
+  );
+END;
+/
+
+
+
+B) Block SYS from Executing DDL Statements, This prevents SYS from executing ALTER SYSTEM commands.
+
+
+BEGIN
+  DVSYS.DBMS_MACADM.CREATE_COMMAND_RULE(
+    command        => 'ALTER SYSTEM',
+    rule_name      => 'Block SYS Alter System',
+    object_owner   => NULL,
+    object_name    => NULL,
+    rule_expr      => 'SYS_CONTEXT(''USERENV'', ''SESSION_USER'') != ''SYS''',
+    enabled        => DBMS_MACUTL.G_YES
+  );
+END;
+/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Created By : UTP Systems Team - Malek Mohamed
