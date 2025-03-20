@@ -1,0 +1,122 @@
+====================== increase redo log file size on oracle DG ======================
+
+============ on primary ==============
+
+----------- check current redo log groups,size and locations 
+
+SQL> select GROUP#,THREAD#,MEMBERS,BYTES,status from v$log;
+
+SQL> select MEMBER,TYPE from v$logfile where type='ONLINE';
+
+-------------- add new redo log group with new size 
+
+SQL> ALTER DATABASE ADD  LOGFILE THREAD 1 ('+DATA','+RECO') SIZE 3G;
+SQL> ALTER DATABASE ADD  LOGFILE THREAD 1 ('+DATA','+RECO') SIZE 3G;
+SQL> ALTER DATABASE ADD  LOGFILE THREAD 2 ('+DATA','+RECO') SIZE 3G;
+SQL> ALTER DATABASE ADD  LOGFILE THREAD 2 ('+DATA','+RECO') SIZE 3G;
+
+------------- drop the old redo log group when status is inactive
+
+SQL> select GROUP#,THREAD#,MEMBERS,BYTES,status from v$log; 
+
+SQL> alter system switch logfile; SQL> alter system checkpoint; ==========> until the old redo log group to be inactive
+
+SQL> ALTER DATABASE DROP LOGFILE group 1;
+SQL> ALTER DATABASE DROP LOGFILE group 2;
+SQL> ALTER DATABASE DROP LOGFILE group 3;
+SQL> ALTER DATABASE DROP LOGFILE group 4;
+
+================= recreate standby redo log group with new size as redo log group to solve the lag issue ===========
+
+============ on primary ==============
+
+------------ stop the transport and apply from DG broker 
+
+dgmgrl /
+
+DGMGRL> show configuration
+
+DGMGRL> edit database ECMCON set state='transport-off';
+Succeeded.
+DGMGRL> edit database ecmcndr set state='apply-off';
+Succeeded.
+
+=========== on primary and standby =============
+
+-------------- check current standby redo log groups,size and locations
+
+SQL> select GROUP#,THREAD#,BYTES from v$standby_log;
+
+SQL> select MEMBER,TYPE from v$logfile where type='STANDBY';
+
+------------- drop standby redo log group 
+
+SQL> alter database drop standby logfile group 5;
+SQL> alter database drop standby logfile group 6;
+SQL> alter database drop standby logfile group 7;
+SQL> alter database drop standby logfile group 8;
+SQL> alter database drop standby logfile group 9;
+SQL> alter database drop standby logfile group 10;
+
+============= on standby ============
+
+-------------- add new standby redo log group with new size
+
+SQL> alter database add standby logfile thread 1 group 5 ('+DATA','+RECO') size 3G reuse;
+SQL> alter database add standby logfile thread 1 group 6 ('+DATA','+RECO') size 3G reuse;
+SQL> alter database add standby logfile thread 1 group 7 ('+DATA','+RECO') size 3G reuse;
+SQL> alter database add standby logfile thread 2 group 8 ('+DATA','+RECO') size 3G reuse;
+SQL> alter database add standby logfile thread 2 group 9 ('+DATA','+RECO') size 3G reuse;
+SQL> alter database add standby logfile thread 2 group 10 ('+DATA','+RECO') size 3G reuse;
+
+============= on primary ============
+
+-------------- add new standby redo log group with new size
+
+SQL> alter database add standby logfile thread 1 group 5 ('+DATA','+RECO') size 3G reuse;
+SQL> alter database add standby logfile thread 1 group 6 ('+DATA','+RECO') size 3G reuse;
+SQL> alter database add standby logfile thread 1 group 7 ('+DATA','+RECO') size 3G reuse;
+SQL> alter database add standby logfile thread 2 group 8 ('+DATA','+RECO') size 3G reuse;
+SQL> alter database add standby logfile thread 2 group 9 ('+DATA','+RECO') size 3G reuse;
+SQL> alter database add standby logfile thread 2 group 10 ('+DATA','+RECO') size 3G reuse;
+
+============ on standby 
+
+------------ recreate redo log group with new size
+
+SQL> select GROUP#,THREAD#,MEMBERS,BYTES,status from v$log;
+
+SQL> select MEMBER,TYPE from v$logfile where type='ONLINE';
+
+SQL> show parameter STANDBY_FILE_MANAGEMENT
+
+SQL> ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=manual scope=both sid='*';
+
+SQL> ALTER DATABASE ADD  LOGFILE THREAD 1 ('+DATA','+RECO') SIZE 3G;
+SQL> ALTER DATABASE ADD  LOGFILE THREAD 1 ('+DATA','+RECO') SIZE 3G;
+SQL> ALTER DATABASE ADD  LOGFILE THREAD 2 ('+DATA','+RECO') SIZE 3G;
+SQL> ALTER DATABASE ADD  LOGFILE THREAD 2 ('+DATA','+RECO') SIZE 3G;
+
+SQL> ALTER DATABASE DROP LOGFILE group 1;
+SQL> ALTER DATABASE DROP LOGFILE group 2;
+SQL> ALTER DATABASE DROP LOGFILE group 3;
+SQL> ALTER DATABASE DROP LOGFILE group 4;
+
+ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=AUTO scope=both sid='*';
+
+================ on primary 
+
+------------- start the transport and apply from DG broker
+
+dgmgrl /
+
+DGMGRL> show configuration
+
+DGMGRL> edit database ECMCON set state='transport-on';
+Succeeded.
+DGMGRL> edit database ecmcndr set state='apply-on';
+Succeeded.
+
+---------- check the lag on standby database
+
+DGMGRL> show database ecmcndr

@@ -1,0 +1,155 @@
+SQL> @?/rdbms/admin/sqltrpt.sql
+
+15 Most expensive SQL in the cursor cache
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SQL_ID           ELAPSED                                                        
+------------- ----------                                                        
+SQL_TEXT_FRAGMENT                                                               
+--------------------------------------------------------------------------------
+11dj4a8qwgf6u  59,805.77                                                        
+SELECT TO_CHAR(current_timestamp AT TIME ZONE :"SYS_B_0                         
+                                                                                
+1zp7u7c8bd082  43,857.36                                                        
+SELECT /*+ NO_STATEMENT_QUEUING RESULT_CACHE (SYSOBJ=TR                         
+                                                                                
+4xm1ruvkx3awx  31,176.42                                                        
+DECLARE job BINARY_INTEGER := :job;  next_date TIMESTAM                         
+                                                                                
+
+SQL_ID           ELAPSED                                                        
+------------- ----------                                                        
+SQL_TEXT_FRAGMENT                                                               
+--------------------------------------------------------------------------------
+647cg1r76fw1v  21,862.12                                                        
+INSERT INTO shclog (msgtype,flipped_msgtype,pan,mask_pa                         
+                                                                                
+80bhznx349p5s  17,910.36                                                        
+ with latest_run as ( SELECT all_runs.CON_ID, all_runs.                         
+                                                                                
+1zp7u7c8bd082  15,915.29                                                        
+SELECT /*+ NO_STATEMENT_QUEUING RESULT_CACHE (SYSOBJ=TR                         
+                                                                                
+
+SQL_ID           ELAPSED                                                        
+------------- ----------                                                        
+SQL_TEXT_FRAGMENT                                                               
+--------------------------------------------------------------------------------
+b6usrg82hwsa3  15,087.86                                                        
+call dbms_stats.gather_database_stats_job_proc (  )                             
+                                                                                
+df1x08wsgw1gq  14,186.79                                                        
+SELECT /*+ NO_STATEMENT_QUEUING RESULT_CACHE (SYSOBJ=TR                         
+                                                                                
+4u5y5zbgpyvfm   5,383.32                                                        
+INSERT INTO shclog (msgtype,flipped_msgtype,pan,mask_pa                         
+                                                                                
+
+SQL_ID           ELAPSED                                                        
+------------- ----------                                                        
+SQL_TEXT_FRAGMENT                                                               
+--------------------------------------------------------------------------------
+70awddrh59vxy   3,771.10                                                        
+select pcode as "pcode", txntype as "txntype", trandate                         
+                                                                                
+f8rjgdjnmkp5n   2,964.18                                                        
+SELECT last_used, key_id, enc_pan, pan_hash FROM ist_pa                         
+                                                                                
+6gj7wc4rynnzh   2,866.90                                                        
+select pcode as "pcode", txntype as "txntype", trandate                         
+                                                                                
+
+SQL_ID           ELAPSED                                                        
+------------- ----------                                                        
+SQL_TEXT_FRAGMENT                                                               
+--------------------------------------------------------------------------------
+0a3q8fy3kn8t5   2,829.10                                                        
+SELECT token, last_used, key_id, enc_pan FROM ist_pan_t                         
+                                                                                
+56qgzzpasupxt   2,735.95                                                        
+UPDATE USMSMESSAGES SET SENTFLAG = :"SYS_B_0", SENTDATE                         
+                                                                                
+fhf8upax5cxsz   1,659.67                                                        
+BEGIN sys.dbms_auto_report_internal.i_save_report (:rep                         
+                                                                                
+
+15 Most expensive SQL in the workload repository
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     (select to_char(substr(replace(st.sql_text,:newl,' '),1,55))
+         *
+ERROR at line 3:
+ORA-01427: single-row subquery returns more than one row 
+
+
+
+Specify the Sql id
+~~~~~~~~~~~~~~~~~~
+Enter value for sqlid: 4u5y5zbgpyvfm
+
+Sql Id specified: 4u5y5zbgpyvfm                                                 
+
+Tune the sql
+~~~~~~~~~~~~
+
+GENERAL INFORMATION SECTION                                                     
+------------------------------------------------------------------------------- 
+Tuning Task Name   : TASK_29988                                                 
+Tuning Task Owner  : SYS                                                        
+Workload Type      : Single SQL Statement                                       
+Scope              : COMPREHENSIVE                                              
+Time Limit(seconds): 1800                                                       
+Completion Status  : COMPLETED                                                  
+Started at         : 12/23/2024 11:09:17                                        
+Completed at       : 12/23/2024 11:09:21                                        
+                                                                                
+------------------------------------------------------------------------------- 
+Schema Name   : OASIS77                                                         
+
+Container Name: OASIS77                                                         
+SQL ID        : 4u5y5zbgpyvfm                                                   
+SQL Text      : INSERT INTO shclog (msgtype,flipped_msgtype,pan,mask_pan,pcode  
+                ,txntype,amount,aval_balance,amount_equiv,cash_back,iss_conv_r  
+                ate,iss_currency_code,iss_conv_date,acq_conv_rate,acq_currency  
+                _code,acq_conv_date,tra_amount,tra_conv_rate,tra_currency_code  
+                ,gateway_id,tra_conv_date,fee,new_fee,new_amount,new_setl_amou  
+                nt,settlement_fee,settlement_rate,settlement_code,settlement_a  
+                mount,trandate,trantime,trace,local_time,local_date,settlement  
+                _date,cap_date,pos_entry_code,pos_condition_code,pos_pin_cap_c  
+                ode,pos_cap_code,life_cycle,acquirer,issuer,transferee,origina  
+                tor,member_id,f_id,txnsrc,txndest,alternateacquirer,entityid,i  
+                ss_entityid,cardproduct,mvv,invoice_number,trans_id,fpi,txn_st  
+
+                art_time,txn_end_time,device_cap,respcode,reason_code,revcode,  
+                shcerror,saf,origmsg,origflippedmsg,origtrace,origdate,origtim  
+                e,merchant_type,acq_country,refnum,authnum,termid,acceptorname  
+                ,termloc,addresponse,acctnum,branch,serial_1,serial_2,storeid,  
+                lane,terminal_trace,checker_id,supervisor,shift_number,batch_i  
+                d,device_devcap,shc_devcap,formatter_devcap,auth_devcap,filler  
+                1,filler2,filler3,filler4,issuer_data,acquirer_data,new_amount  
+                _equiv,acq_aval_balance,acq_ledger_balance,setl_aval_balance,s  
+                etl_ledger_balance,aval_balance_type,ledger_balance_type,new_s  
+                etl_fee,txn_amount,txn_new_amount,txn_currency_code,txn_conv_r  
+                ate,txn_conv_date,ch_amount,ch_new_amount,ch_currency_code,ch_  
+                conv_rate,ch_conv_date,ledger_balance,slot_num,device_fee,shc_  
+                data_buffer,card_seqno,alpharesponsecode,chip_type,chip_index,  
+
+                processor_busday,seq_trace_no,seg_req,seg_resp,site_id,version  
+                ,src_node,dest_node,submerchant_id,dest_id,payfacid) VALUES     
+                (:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13,:14,:15,:16,:17,:1  
+                8,:19,:20,:21,:22,:23,:24,:25,:26,:27,:28,:29,:30,:31,:32,:33,  
+                :34,:35,:36,:37,:38,:39,:40,:41,:42,:43,:44,:45,:46,:47,:48,:4  
+                9,:50,:51,:52,:53,:54,:55,:56,:57,:58,:59,:60,:61,:62,:63,:64,  
+                :65,:66,:67,:68,:69,:70,:71,:72,:73,:74,:75,:76,:77,:78,:79,:8  
+                0,:81,:82,:83,:84,:85,:86,:87,:88,:89,:90,:91,:92,:93,:94,:95,  
+                :96,:97,:98,:99,:100,:101,:102,:103,:104,:105,:106,:107,:108,:  
+                109,:110,:111,:112,:113,:114,:115,:116,:117,:118,:119,:120,:12  
+                1,:122,:123,:124,:125,:126,:127,:128,:129,:130,:131,:132,:133,  
+                :134,:135,:136)                                                 
+                                                                                
+
+------------------------------------------------------------------------------- 
+There are no recommendations to improve the statement.                          
+                                                                                
+------------------------------------------------------------------------------- 
+                                                                                
+SQL> exit
