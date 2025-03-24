@@ -1,0 +1,462 @@
+our env to apply TDE
+--------------------------------------------------------------------------
+[oracle@rac1-node1 ~]$ . oraenv
+ORACLE_SID = [UTP1] ? smart1
+The Oracle base remains unchanged with value /u01/app/oracle
+[oracle@rac1-node1 ~]$ sqlplus / as sysdba
+
+SQL*Plus: Release 19.0.0.0.0 - Production on Wed Jan 22 10:45:29 2025
+Version 19.24.0.0.0
+
+Copyright (c) 1982, 2024, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+Version 19.24.0.0.0
+
+SQL>
+SQL> show pdbs
+
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         3 CARD                           READ WRITE NO
+
+
+
+
+--------------------------------------------------------------------------
+1- : CHECK THE DATA BEFORE THE TDE 
+--------------------------------------------------------------------------
+[oracle@rac1-node1 tde]$ rman target/
+
+Recovery Manager: Release 19.0.0.0.0 - Production on Wed Jan 22 10:59:56 2025
+Version 19.24.0.0.0
+
+Copyright (c) 1982, 2019, Oracle and/or its affiliates.  All rights reserved.
+
+report connected to target database: SMART (DBID=3209657850)
+                                                                                                                                                                    report schema;
+
+RMAN> report schema;
+
+
+using target database control file instead of recovery catalog
+Report0 of database schema for database with db_unique_name SMART
+
+List of Permanent Datafiles
+===========================
+File Size(MB) Tablespace           RB segs Datafile Name
+---- -------- -------------------- ------- ------------------------
+1    1080     SYSTEM               YES     +DATA/SMART/DATAFILE/system.348.1191058543
+3    820      SYSAUX               NO      +DATA/SMART/DATAFILE/sysaux.349.1191058597
+4    955      UNDOTBS1             YES     +DATA/SMART/DATAFILE/undotbs1.350.1191058623
+5    450      PDB$SEED:SYSTEM      NO      +DATA/SMART/86B637B62FE07A65E053F706E80A27CA/DATAFILE/system.356.1191060141
+6    470      PDB$SEED:SYSAUX      NO      +DATA/SMART/86B637B62FE07A65E053F706E80A27CA/DATAFILE/sysaux.357.1191060141
+7    5        USERS                NO      +DATA/SMART/DATAFILE/users.351.1191058623
+8    265      PDB$SEED:UNDOTBS1    NO      +DATA/SMART/86B637B62FE07A65E053F706E80A27CA/DATAFILE/undotbs1.358.1191060141
+9    25       UNDOTBS2             YES     +DATA/SMART/DATAFILE/undotbs2.360.1191060465
+10   450      CARD:SYSTEM          YES     +DATA/SMART/2C4849256E3DFD3CE0631401A8C0673E/DATAFILE/system.365.1191061747
+11   470      CARD:SYSAUX          NO      +DATA/SMART/2C4849256E3DFD3CE0631401A8C0673E/DATAFILE/sysaux.366.1191061747
+12   265      CARD:UNDOTBS1        YES     +DATA/SMART/2C4849256E3DFD3CE0631401A8C0673E/DATAFILE/undotbs1.364.1191061747
+13   265      CARD:UNDO_2          YES     +DATA/SMART/2C4849256E3DFD3CE0631401A8C0673E/DATAFILE/undo_2.368.1191061797
+14   5        CARD:USERS           NO      +DATA/SMART/2C4849256E3DFD3CE0631401A8C0673E/DATAFILE/users.369.1191061795
+
+List of Temporary Files
+=======================
+File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
+---- -------- -------------------- ----------- --------------------
+1    206      TEMP                 32767       +DATA/SMART/TEMPFILE/temp.355.1191058699
+2    174      PDB$SEED:TEMP        32767       +DATA/SMART/2C47E9268F004A2BE0631401A8C05583/TEMPFILE/temp.359.1191060173
+3    174      CARD:TEMP            32767       +DATA/SMART/2C4849256E3DFD3CE0631401A8C0673E/TEMPFILE/temp.367.1191061767
+
+
+
+
+
+--------------------------------------------------------------------------
+2- create test TableSpace 
+--------------------------------------------------------------------------
+RMAN> CREATE TABLESPACE TEST_STRINGS DATAFILE '+DATA' size 10m EXTENT MANAGEMENT LOCAL AUTOALLOCATE SEGMENT SPACE MANAGEMENT AUTO;
+
+Statement processed
+
+
+--------------------------------------------------------------------------
+3-check the TDE enabled 
+--------------------------------------------------------------------------
+RMAN> select * from V$encryption_wallet;
+
+WRL_TYPE
+--------------------
+WRL_PARAMETER
+--------------------------------------------------------------------------------
+STATUS                         WALLET_TYPE          WALLET_OR KEYSTORE FULLY_BAC
+------------------------------ -------------------- --------- -------- ---------
+    CON_ID
+----------
+FILE
+/u01/app/oracle/admin/smart/wallet
+NOT_AVAILABLE                  UNKNOWN              SINGLE    NONE     UNDEFINED
+         1
+
+FILE
+
+NOT_AVAILABLE                  UNKNOWN              SINGLE    UNITED   UNDEFINED
+         2 
+
+FILE
+
+NOT_AVAILABLE                  UNKNOWN              SINGLE    UNITED   UNDEFINED
+         3
+
+
+RMAN> exit
+
+
+Recovery Manager complete.
+
+--------------------------------------------------------------------------
+4-make directory for wallet on "2 nodes" :
+--------------------------------------------------------------------------
+[oracle@rac1-node1 ~]$ mkdir -p /u01/app/oracle/admin/smart/wallet
+[oracle@rac1-node1 tde]$ ls -ltr /u01/app/oracle/admin/smart/
+total 108
+drwxr-x--- 2 oracle oinstall  4096 Jan 22 09:34 dpdump
+drwxr-x--- 2 oracle oinstall  4096 Jan 22 09:34 hdump
+drwxr-x--- 2 oracle asmadmin  4096 Jan 22 09:35 xdb_wallet
+drwxr-x--- 2 oracle oinstall  4096 Jan 22 10:25 pfile
+drwxr-x--- 4 oracle oinstall 86016 Jan 22 11:03 adump
+drwxr-xr-x 2 oracle oinstall  4096 Jan 22 11:03 wallet
+[oracle@rac1-node1 tde]$ cd /u01/app/oracle/admin/smart/
+[oracle@rac1-node1 smart]$ ll
+total 120
+drwxr-x--- 4 oracle oinstall 98304 Jan 22 11:10 adump
+drwxr-x--- 2 oracle oinstall  4096 Jan 22 09:34 dpdump
+drwxr-x--- 2 oracle oinstall  4096 Jan 22 09:34 hdump
+drwxr-x--- 2 oracle oinstall  4096 Jan 22 10:25 pfile
+drwxr-xr-x 2 oracle oinstall  4096 Jan 22 11:03 wallet
+drwxr-x--- 2 oracle asmadmin  4096 Jan 22 09:35 xdb_wallet
+[oracle@rac1-node1 smart]$ cd wallet/
+[oracle@rac1-node1 wallet]$ 
+
+
+--------------------------------------------------------------------------
+5-change the parameter "wallet_root" and after this change we need to restart our DB
+--------------------------------------------------------------------------
+[oracle@rac1-node1 wallet]$ sqlplus / as sysdba
+
+SQL*Plus: Release 19.0.0.0.0 - Production on Wed Jan 22 11:25:55 2025
+Version 19.24.0.0.0
+
+Copyright (c) 1982, 2024, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+Version 19.24.0.0.0
+
+SQL>
+SQL> alter system set wallet_root='/u01/app/oracle/admin/smart/wallet' scope=spfile sid='*';
+
+System altered.
+
+SQL> exit
+Disconnected from Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+Version 19.24.0.0.0
+[oracle@rac1-node1 wallet]$ srvctl stop database -d smart
+[oracle@rac1-node1 wallet]$ srvctl start database -d smart
+[oracle@rac1-node1 wallet]$
+--------------------------------------------------------------------------
+6-after restart we need to implement the TDE configurations :
+--------------------------------------------------------------------------
+[oracle@rac1-node1 wallet]$ sqlplus / as sysdba
+
+SQL*Plus: Release 19.0.0.0.0 - Production on Wed Jan 22 11:27:58 2025
+Version 19.24.0.0.0
+
+Copyright (c) 1982, 2024, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+Version 19.24.0.0.0
+
+SQL> alter system set tde_configuration="KEYSTORE_CONFIGURATION=FILE" scope=both sid='*';
+
+System altered.
+
+SQL> col WRL_PARAMETER for a50
+set lines 300
+select * from V$encryption_wallet;
+
+WRL_TYPE             WRL_PARAMETER                                      STATUS                         WALLET_TYPE          WALLET_OR KEYSTORE FULLY_BAC     CON_ID
+-------------------- -------------------------------------------------- ------------------------------ -------------------- --------- -------- --------- ----------
+FILE                 /u01/app/oracle/admin/smart/wallet/tde/            NOT_AVAILABLE                  UNKNOWN              SINGLE    NONE     UNDEFINED          1
+FILE                                                                    NOT_AVAILABLE                  UNKNOWN              SINGLE    UNITED   UNDEFINED          2
+FILE                                                                    NOT_AVAILABLE                  UNKNOWN              SINGLE    UNITED   UNDEFINED          3
+
+SQL> show pdbs
+
+    CON_ID CON_NAME                       OPEN MODE  RESTRICTED
+---------- ------------------------------ ---------- ----------
+         2 PDB$SEED                       READ ONLY  NO
+         3 CARD                           MOUNTED
+
+
+SQL>  alter pluggable database all open instances=all;
+
+Pluggable database altered.
+
+SQL> alter pluggable database all save state instances=all;
+
+Pluggable database altered.
+
+--------------------------------------------------------------------------
+7-create KEYSTORE on the CDB level :
+--------------------------------------------------------------------------
+
+SQL> ADMINISTER KEY MANAGEMENT CREATE KEYSTORE IDENTIFIED BY welcome1;
+
+keystore altered.
+
+SQL> select * from V$encryption_wallet;
+
+WRL_TYPE             WRL_PARAMETER                                      STATUS                         WALLET_TYPE          WALLET_OR KEYSTORE FULLY_BAC     CON_ID
+-------------------- -------------------------------------------------- ------------------------------ -------------------- --------- -------- --------- ----------
+FILE                 /u01/app/oracle/admin/smart/wallet/tde/            CLOSED                         UNKNOWN              SINGLE    NONE     UNDEFINED          1
+FILE                                                                    CLOSED                         UNKNOWN              SINGLE    UNITED   UNDEFINED          2
+FILE                                                                    CLOSED                         UNKNOWN              SINGLE    UNITED   UNDEFINED          3
+
+
+--------------------------------------------------------------------------------------------------------
+8-after create KEYSTORE we need to open it on the CDB & pluggable so we used "container=all" for that :
+--------------------------------------------------------------------------------------------------------
+SQL> ADMINISTER KEY MANAGEMENT SET KEYSTORE OPEN IDENTIFIED BY welcome1 container=all;
+
+keystore altered.
+
+SQL>  select * from V$encryption_wallet;
+
+WRL_TYPE             WRL_PARAMETER                                      STATUS                         WALLET_TYPE          WALLET_OR KEYSTORE FULLY_BAC     CON_ID
+-------------------- -------------------------------------------------- ------------------------------ -------------------- --------- -------- --------- ----------
+FILE                 /u01/app/oracle/admin/smart/wallet/tde/            OPEN_NO_MASTER_KEY             PASSWORD             SINGLE    NONE     UNDEFINED          1
+FILE                                                                    OPEN_NO_MASTER_KEY             PASSWORD             SINGLE    UNITED   UNDEFINED          2
+FILE                                                                    OPEN_NO_MASTER_KEY             PASSWORD             SINGLE    UNITED   UNDEFINED          3
+
+--------------------------------------------------------------------------------------------------------
+9-in this step we make a KEY after we opened our KEYSTORE for CDB and all pluggables:
+--------------------------------------------------------------------------------------------------------
+
+SQL> ADMINISTER KEY MANAGEMENT SET KEY IDENTIFIED BY welcome1 WITH BACKUP container=all;
+
+keystore altered.
+
+SQL> select * from V$encryption_wallet;
+
+WRL_TYPE             WRL_PARAMETER                                      STATUS                         WALLET_TYPE          WALLET_OR KEYSTORE FULLY_BAC     CON_ID
+-------------------- -------------------------------------------------- ------------------------------ -------------------- --------- -------- --------- ----------
+FILE                 /u01/app/oracle/admin/smart/wallet/tde/            OPEN                           PASSWORD             SINGLE    NONE     NO                 1
+FILE                                                                    OPEN                           PASSWORD             SINGLE    UNITED   NO                 2
+FILE                                                                    OPEN                           PASSWORD             SINGLE    UNITED   NO                 3
+
+--------------------------------------------------------------------------------------------------------
+select statment to check all keys:
+--------------------------------------------------------------------------------------------------------
+
+SQL> set lines 300
+col KEY_ID for a60
+col CREATOR_DBNAME for a30
+col CREATOR_PDBNAME  for a30
+select CON_ID,KEY_ID,KEYSTORE_TYPE,CREATOR_DBNAME,CREATOR_PDBNAME from v$encryption_keys;SQL> SQL> SQL> SQL>
+
+    CON_ID KEY_ID                                                       KEYSTORE_TYPE     CREATOR_DBNAME                 CREATOR_PDBNAME
+---------- ------------------------------------------------------------ ----------------- ------------------------------ ------------------------------
+         1 ASnIoFLt5E8hv/Z8hdfOvK4AAAAAAAAAAAAAAAAAAAAAAAAAAAAA         SOFTWARE KEYSTORE smart                          CDB$ROOT
+         3 AcgJ+MyDjE/Lv+Cl1KeDWJgAAAAAAAAAAAAAAAAAAAAAAAAAAAAA         SOFTWARE KEYSTORE smart                          CARD
+
+
+--------------------------------------------------------------------------------------------------------
+10-"create AUTO_LOGIN option" in this step we change the  WALLET_TYPE from password to AUTO_LOGIN :
+--------------------------------------------------------------------------------------------------------
+
+SQL> ADMINISTER KEY MANAGEMENT CREATE AUTO_LOGIN KEYSTORE FROM KEYSTORE IDENTIFIED BY welcome1;
+
+keystore altered.
+
+SQL> select * from V$encryption_wallet;
+
+WRL_TYPE             WRL_PARAMETER                                      STATUS                         WALLET_TYPE          WALLET_OR KEYSTORE FULLY_BAC     CON_ID
+-------------------- -------------------------------------------------- ------------------------------ -------------------- --------- -------- --------- ----------
+FILE                 /u01/app/oracle/admin/smart/wallet/tde/            OPEN                           PASSWORD             SINGLE    NONE     NO                 1
+FILE                                                                    OPEN                           PASSWORD             SINGLE    UNITED   NO                 2
+FILE                                                                    OPEN                           PASSWORD             SINGLE    UNITED   NO                 3
+
+
+
+--------------------------------------------------------------------------------------------------------
+11-"apply AUTO_LOGIN option" in this step we close the keystore to apply AUTO_LOGIN or u can restart our DB
+--------------------------------------------------------------------------------------------------------
+
+SQL> ADMINISTER KEY MANAGEMENT SET KEYSTORE close  identified by welcome1;
+
+keystore altered.
+
+SQL> select * from V$encryption_wallet;
+
+WRL_TYPE             WRL_PARAMETER                                      STATUS                         WALLET_TYPE          WALLET_OR KEYSTORE FULLY_BAC     CON_ID
+-------------------- -------------------------------------------------- ------------------------------ -------------------- --------- -------- --------- ----------
+FILE                 /u01/app/oracle/admin/smart/wallet/tde/            OPEN                           AUTOLOGIN            SINGLE    NONE     NO                 1
+FILE                                                                    OPEN                           AUTOLOGIN            SINGLE    UNITED   NO                 2
+FILE                                                                    OPEN                           AUTOLOGIN            SINGLE    UNITED   NO                 3
+
+SQL> exit
+Disconnected from Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+Version 19.24.0.0.0
+--------------------------------------------------------------------------------------------------------
+12-now we finished out TDE implementation , let's check :
+--------------------------------------------------------------------------------------------------------
+
+[oracle@rac1-node1 wallet]$ srvctl stop database -d smart
+
+---------------------------------------------------------------------------------------------------------------------
+Transfer TDE files from Node 1 to Node 2 and to the standby database, if it exists,before starting the database:
+---------------------------------------------------------------------------------------------------------------------
+
+
+[oracle@rac1-node1 wallet]$ scp -p * rac1-node2:/u01/app/oracle/admin/smart/wallet
+
+[oracle@rac1-node1 wallet]$ srvctl start database -d smart
+[oracle@rac1-node1 wallet]$ sqlplus / as sysdba
+
+SQL*Plus: Release 19.0.0.0.0 - Production on Wed Jan 22 11:58:25 2025
+Version 19.24.0.0.0
+
+Copyright (c) 1982, 2024, Oracle.  All rights reserved.
+
+
+Connected to:
+Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+Version 19.24.0.0.0
+
+SQL>
+SQL> col WRL_PARAMETER for a50
+set lines 300
+select * from V$encryption_wallet;SQL> SQL>
+
+WRL_TYPE             WRL_PARAMETER                                      STATUS                         WALLET_TYPE          WALLET_OR KEYSTORE FULLY_BAC     CON_ID
+-------------------- -------------------------------------------------- ------------------------------ -------------------- --------- -------- --------- ----------
+FILE                 /u01/app/oracle/admin/smart/wallet/tde/            OPEN                           AUTOLOGIN            SINGLE    NONE     NO                 1
+FILE                                                                    OPEN                           AUTOLOGIN            SINGLE    UNITED   NO                 2
+FILE                                                                    OPEN                           AUTOLOGIN            SINGLE    UNITED   NO                 3
+
+SQL> select TABLESPACE_NAME, ENCRYPTED from dba_tablespaces order by 1;
+
+TABLESPACE_NAME                ENC
+------------------------------ ---
+SYSAUX                         NO
+SYSTEM                         NO
+TEMP                           NO
+TEST_STRINGS                   NO
+UNDOTBS1                       NO
+UNDOTBS2                       NO
+USERS                          NO
+
+7 rows selected.
+
+SQL> alter session set container=CDB$ROOT;
+
+Session altered.
+
+--------------------------------------------------------------------------------------------------------
+now we need to ENCRYPT our test Tablespace to check :
+--------------------------------------------------------------------------------------------------------
+
+SQL> ALTER TABLESPACE TEST_STRINGS  ENCRYPTION ONLINE USING 'AES128' ENCRYPT ;
+
+Tablespace altered.
+
+
+
+SQL> SELECT t.name "TSName", e.encryptionalg "Algorithm" FROM v$tablespace t, v$encrypted_tablespaces e WHERE t.ts# = e.ts#;
+
+TSName                         Algorit
+------------------------------ -------
+USERS                          AES128
+TEST_STRINGS                   AES128
+
+
+--------------------------------------------------------------------------------------------------------
+now if we need to ENCRYPT any new Tablespace change this parameter :
+--------------------------------------------------------------------------------------------------------
+
+SQL> alter system set encrypt_new_tablespaces = always scope=both sid='*';
+
+System altered.
+
+--------------------------------------------------------------------------------------------------------
+now if we need to change the default_algorithm to any Tablespace change this parameter :
+--------------------------------------------------------------------------------------------------------
+
+SQL> ALTER SYSTEM SET "_tablespace_encryption_default_algorithm"=AES256 scope=both sid='*';
+
+System altered.
+
+--------------------------------------------------------------------------------------------------------
+now if we need to change any encryption algorithm of any Tablespace this the statment :
+--------------------------------------------------------------------------------------------------------
+
+SQL> ALTER TABLESPACE TEST_STRINGS ENCRYPTION ONLINE USING 'AES256' REKEY;
+
+Tablespace altered.
+
+SQL> SELECT t.name "TSName", e.encryptionalg "Algorithm" FROM v$tablespace t, v$encrypted_tablespaces e WHERE t.ts# = e.ts#;
+
+TSName                         Algorit
+------------------------------ -------
+USERS                          AES256
+TEST_STRINGS                   AES256
+
+SQL> ALTER TABLESPACE SYSAUX ENCRYPTION ONLINE USING 'AES256' ENCRYPT;
+
+
+Tablespace altered.
+--------------------------------------------------------------------------------------------------------
+now we need to test our change so we will create a new TBS to check our changes  :
+--------------------------------------------------------------------------------------------------------
+SQL> CREATE TABLESPACE TEST DATAFILE '+DATA' size 1G autoextend on next 1G maxsize unlimited;
+
+Tablespace created.
+
+
+SQL>  select TABLESPACE_NAME, ENCRYPTED from dba_tablespaces order by 1;
+
+TABLESPACE_NAME                ENC
+------------------------------ ---
+TEST                         YES
+SYSAUX                         YES
+SYSTEM                         NO
+TEMP                           NO
+TEST_STRINGS                   YES
+UNDOTBS1                       NO
+UNDOTBS2                       NO
+USERS                          NO
+
+8 rows selected.
+
+
+SQL> SQL>  SELECT t.name "TSName", e.encryptionalg "Algorithm" FROM v$tablespace t, v$encrypted_tablespaces e WHERE t.ts# = e.ts#
+  2  ;
+
+TSName                         Algorit
+------------------------------ -------
+SYSAUX                         AES256
+SYSAUX                         AES256
+SYSAUX                         AES256
+USERS                          AES256
+TEST_STRINGS                   AES256
+TEST                           AES256
+
+
+
