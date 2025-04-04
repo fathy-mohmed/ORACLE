@@ -1,24 +1,31 @@
 https://dbaclass.com/monitor-your-db/
-
-
 https://labex.io/tutorials/linux-how-to-search-text-in-linux-logs-438013
+
+
+tar -cvf oracle_home.tar 12.2.0
+
+select PROGRAM, module, SCHEMANAME  
+from gv$session 
+where SCHEMANAME in ('BANKPLUS_CBE', 'ABE', 'DMART', 'HISTORY', 'ABE', 'SFB_HELP', 'SFBACCUM');
+
 
 
 ls -1 | wc -l
 
-
-
 ls -1a | wc -l
+
+
 
 select logins from v$instance;
 
 Sql> show parameter STANDBY_FILE_MANAGEMENT;
+
 NAME                                 TYPE        VALUE
 ------------------------------------ ----------- ------------------------------
 standby_file_management              string      AUTO
 
 sql> ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=AUTO;
-OR 
+							OR 
 sql> ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=MANUAL;
 
 -----------------------------------------------------------------------------------------------------------------------------
@@ -35,8 +42,9 @@ WHERE name = 'OMAR_MOHAMED';
 
 ALTER USER CTXCORE IDENTIFIED BY oasis77; 
 
-ALTER USER CTXCORE IDENTIFIED BY ctxcore;
 ----------------------   DR   AND RUN COMMAND IN HQ alter system switch logfile ---------------------------------------------
+
+
 
 SELECT ARCH.THREAD# "Thread", ARCH.SEQUENCE# "Last Sequence Received", APPL.SEQUENCE# "Last Sequence Applied", (ARCH.SEQUENCE# - APPL.SEQUENCE#) "Difference" FROM (SELECT THREAD# ,SEQUENCE# FROM V$ARCHIVED_LOG WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)) ARCH,(SELECT THREAD# ,SEQUENCE# FROM V$LOG_HISTORY WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$LOG_HISTORY GROUP BY THREAD#)) APPL WHERE ARCH.THREAD# = APPL.THREAD# ORDER BY 1;
 
@@ -136,7 +144,6 @@ SELECT db_unique_name, open_mode FROM v$database;
 show parameter recovery;
 show parameter local;
 select STATUS from v$instance;
-
 
 ------------------------------------------------------------------------------------------------------------------------------
 ARCHIVELOG;
@@ -252,6 +259,14 @@ CREATE USER rawan_magdy
 GRANT SELECT ANY TABLE TO rawan_magdy;
 
 --------------------------------------------------------------------------------------------------------------------------------
+to find all errors in invalid objects 
+=====================================
+
+
+ select * from all_errors where name='<object_name>' order by sequence; 
+ 
+
+--------------------------------------------------------------------------------------------------------------------------------
 Table space size: 
 ==================
 
@@ -271,8 +286,6 @@ where t.tablespace=fs.tablespace (+)
 order by "% Free";
 
 
-
-
 ALTER TABLESPACE <TABLESPACE_NAME> ADD DATAFILE SIZE 31G AUTOEXTEND ON NEXT 1G MAXSIZE 31G;
 
 
@@ -286,8 +299,7 @@ select username, account_status, expiry_date ,PASSWORD_CHANGE_DATE, LAST_LOGIN ,
 
 
 select username, account_status, expiry_date  from dba_users where username not in ('SYS', 'SYSTEM'); 
-SELECT 'ALTER USER '|| name ||' IDENTIFIED BY VALUES '''|| spare4 ||';'|| password ||''';' FROM sys.user$ WHERE name='SYSTEM';
-
+SELECT 'ALTER USER '|| name ||' IDENTIFIED BY VALUES '''|| spare4 ||';'|| password ||''';' FROM sys.user$ WHERE name='USER_RO';
 
 select username, account_status from dba_users where account_status='EXPIRED';
 
@@ -386,22 +398,6 @@ CREATE PLUGGABLE:
   
   /u01/app/oracle/product/19.3.0.0/dbhome_1/install/response
   {ORACLE_BASE}/admin/{DB_UNIQUE_NAME}/scripts
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   
   
   
